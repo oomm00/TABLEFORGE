@@ -82,12 +82,12 @@ const MOCK_RESPONSES: QueryResponse[] = [
 
 function pickMockResponse(query: string): QueryResponse {
   const q = query.toLowerCase();
+  // Write operations checked FIRST (must beat "inactive" in compound phrases like "mark inactive users as churned")
+  if (q.includes("update ") || q.includes("churn") || q.includes("delete") || q.includes("remove") || q.startsWith("mark") || q.includes(" mark ")) return MOCK_RESPONSES[2];
   // Inactivity / last login
-  if (q.includes("inactive") || q.includes("last login") || q.includes("not logged") || q.includes("haven't logged") || q.includes("last seen")) return MOCK_RESPONSES[4];
+  if (q.includes("inactive") || q.includes("last login") || q.includes("not logged") || q.includes("last seen")) return MOCK_RESPONSES[4];
   // Orders / payments
   if (q.includes("order") || q.includes("pending") || q.includes("purchase") || q.includes("payment")) return MOCK_RESPONSES[1];
-  // Write operations
-  if (q.includes("update") || q.includes("churn") || q.includes("delete") || q.includes("remove") || q.includes("mark")) return MOCK_RESPONSES[2];
   // Products
   if (q.includes("product") || q.includes("catalog") || q.includes("popular") || q.includes("revenue") || q.includes("top")) return MOCK_RESPONSES[3];
   // Default: users
