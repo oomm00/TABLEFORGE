@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Light mode (default) ─────────────────────────────────────── */
+:root {
+  --background: 220 20% 97%;
+  --foreground: 220 20% 10%;
+  --card: 0 0% 100%;
+  --border: 220 13% 88%;
+  --accent: 271 76% 53%;
+  --accent-foreground: 0 0% 100%;
+  --muted: 220 14% 92%;
+  --muted-foreground: 220 9% 46%;
+}
+
+/* ─── Dark mode ────────────────────────────────────────────────── */
+.dark {
+  --background: 222 47% 5%;
+  --foreground: 210 40% 98%;
+  --card: 222 47% 7%;
+  --border: 215 14% 22%;
+  --accent: 271 76% 53%;
+  --accent-foreground: 210 40% 98%;
+  --muted: 223 47% 8%;
+  --muted-foreground: 215 16% 47%;
+}
+
+/* ─── Base ─────────────────────────────────────────────────────── */
+html {
+  color-scheme: dark;
+}
+html.light {
+  color-scheme: light;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* ─── Smooth theme transitions ─────────────────────────────────── */
+*, *::before, *::after {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* ─── React Flow override for light mode ───────────────────────── */
+.react-flow__background {
+  background-color: transparent !important;
+}
+
+/* ─── Selection ───────────────────────────────────────────────── */
+::selection {
+  background-color: rgba(138, 43, 226, 0.25);
+  color: currentColor;
+}
+
+/* ─── Scrollbar (dark) ────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+/* ─── Focus ring ──────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(138, 43, 226, 0.5);
+  outline-offset: 2px;
+}
+
+/* ─── Animations ──────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  .animate-fade-in {
+    animation: fade-in 0.35s ease-out both;
+  }
+  .animate-slide-in-right {
+    animation: slide-in-right 0.25s ease-out both;
+  }
+  .animate-pulse-dot {
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  /* Styled horizontal scrollbar for tables */
+  .scrollbar-dark {
+    scrollbar-width: thin;
+    scrollbar-color: #27272a transparent;
+  }
+  .scrollbar-dark::-webkit-scrollbar { height: 5px; width: 5px; }
+  .scrollbar-dark::-webkit-scrollbar-track { background: #0f172a; border-radius: 0 0 8px 8px; }
+  .scrollbar-dark::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+  .scrollbar-dark::-webkit-scrollbar-thumb:hover { background: #52525b; }
+}
