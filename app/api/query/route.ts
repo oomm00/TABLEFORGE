@@ -64,13 +64,33 @@ const MOCK_RESPONSES: QueryResponse[] = [
     ],
     rowCount: 4,
   },
+  {
+    sql: `SELECT id, name, email, last_login\nFROM users\nWHERE last_login < NOW() - INTERVAL '30 days'\nORDER BY last_login ASC\nLIMIT 50;`,
+    explanation: "Finds users who have not logged in for 30+ days, sorted by least recent activity.",
+    risk: "low",
+    operation: "SELECT",
+    columns: ["id", "name", "email", "last_login"],
+    rows: [
+      { id: "usr_3f2t", name: "Dave Wilson",  email: "dwilson@initech.com", last_login: "2024-10-01T08:00:00Z" },
+      { id: "usr_6t3r", name: "Frank Miller", email: "frank@massive.com",   last_login: "2024-09-15T10:20:00Z" },
+      { id: "usr_2m5p", name: "Bob Smith",    email: "bsmith@globex.inc",   last_login: "2024-08-03T09:11:00Z" },
+      { id: "usr_8w4q", name: "Hannah Lee",   email: "hlee@acmecorp.co",    last_login: "2024-07-22T14:45:00Z" },
+    ],
+    rowCount: 4,
+  },
 ];
 
 function pickMockResponse(query: string): QueryResponse {
   const q = query.toLowerCase();
-  if (q.includes("order") || q.includes("pending") || q.includes("purchase")) return MOCK_RESPONSES[1];
-  if (q.includes("update") || q.includes("churn") || q.includes("delete") || q.includes("set")) return MOCK_RESPONSES[2];
-  if (q.includes("product") || q.includes("catalog") || q.includes("popular")) return MOCK_RESPONSES[3];
+  // Inactivity / last login
+  if (q.includes("inactive") || q.includes("last login") || q.includes("not logged") || q.includes("haven't logged") || q.includes("last seen")) return MOCK_RESPONSES[4];
+  // Orders / payments
+  if (q.includes("order") || q.includes("pending") || q.includes("purchase") || q.includes("payment")) return MOCK_RESPONSES[1];
+  // Write operations
+  if (q.includes("update") || q.includes("churn") || q.includes("delete") || q.includes("remove") || q.includes("mark")) return MOCK_RESPONSES[2];
+  // Products
+  if (q.includes("product") || q.includes("catalog") || q.includes("popular") || q.includes("revenue") || q.includes("top")) return MOCK_RESPONSES[3];
+  // Default: users
   return MOCK_RESPONSES[0];
 }
 
@@ -79,20 +99,47 @@ async function callGemini(query: string): Promise<QueryResponse> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("No API key");
 
-  const prompt = `You are a SQL expert assistant for a PostgreSQL database with these tables:
-- users (id, name, email, status, created_at, last_login, plan)
-- orders (id, user_id, product_id, amount, status, created_at)
-- products (id, name, category, price, created_at)
-- subscriptions (id, user_id, plan, expires_at, status)
-- events (id, user_id, event_type, payload, created_at)
-- legacy_users (id, username, last_login)
+  const prompt = `You are a precise PostgreSQL SQL generator. Your ONLY job is to write SQL that exactly matches the user's intent — nothing more, nothing less.
+
+SCHEMA (use ONLY these tables and columns):
+- users        (id uuid PK, name varchar, email varchar, status varchar, plan varchar, created_at timestamp, last_login timestamp)
+- orders       (id uuid PK, user_id uuid FK→users.id, product_id uuid FK→products.id, amount numeric, status varchar, created_at timestamp)
+- products     (id uuid PK, name varchar, category varchar, price numeric, created_at timestamp)
+- subscriptions(id uuid PK, user_id uuid FK→users.id, plan varchar, status varchar, expires_at timestamp, created_at timestamp)
+- events       (id bigint PK, user_id uuid FK→users.id, event_type varchar, payload jsonb, created_at timestamp)
+- legacy_users (id serial PK, username varchar, email varchar, last_login timestamp)
+
+STRICT RULES:
+1. Match the user's intent EXACTLY. Do not add logic they didn't ask for.
+2. Use only the columns listed above. Never invent columns.
+3. For inactivity / "last seen" / "not logged in" queries → use users.last_login
+4. For signup / account age queries → use users.created_at
+5. Only JOIN tables if the query explicitly involves data from multiple tables.
+6. Only GROUP BY / aggregate if the query asks for counts, sums, or averages.
+7. Always add a LIMIT (default 50) to SELECT queries on large tables (events, orders).
+8. Risk: SELECT = "low", UPDATE/DELETE with WHERE = "medium", UPDATE/DELETE without WHERE or DDL = "high"
+
+EXAMPLES:
+User: "users inactive for 30 days"
+SQL: SELECT id, name, email, last_login FROM users WHERE last_login < NOW() - INTERVAL '30 days' ORDER BY last_login ASC LIMIT 50;
+
+User: "show all pending orders"
+SQL: SELECT id, user_id, amount, status, created_at FROM orders WHERE status = 'pending' ORDER BY created_at DESC LIMIT 50;
+
+User: "how many users signed up this month"
+SQL: SELECT COUNT(*) AS signups FROM users WHERE created_at >= DATE_TRUNC('month', NOW());
+
+User: "top 10 products by revenue"
+SQL: SELECT p.id, p.name, SUM(o.amount) AS revenue FROM products p JOIN orders o ON o.product_id = p.id GROUP BY p.id, p.name ORDER BY revenue DESC LIMIT 10;
+
+---
 
 User request: "${query}"
 
-Respond with ONLY valid JSON matching this exact schema:
+Respond with ONLY a valid JSON object — no markdown, no code fences, no explanation outside the JSON:
 {
-  "sql": "the generated SQL query",
-  "explanation": "one sentence plain English explanation",
+  "sql": "the exact SQL — no markdown, just the query",
+  "explanation": "one sentence: what this query does and why",
   "risk": "low" | "medium" | "high",
   "operation": "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "DDL",
   "columns": ["col1", "col2"],
@@ -100,8 +147,7 @@ Respond with ONLY valid JSON matching this exact schema:
   "rowCount": number
 }
 
-Risk rules: SELECT=low, UPDATE/DELETE with WHERE=medium, UPDATE/DELETE without WHERE or DDL=high.
-Generate 3-6 realistic mock result rows matching the query context.`;
+For "rows": generate 3–5 realistic mock rows that match exactly the columns your SQL SELECTs. Use plausible names, email addresses, UUIDs, and timestamps.`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
