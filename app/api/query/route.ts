@@ -225,7 +225,7 @@ User: ${query}
 SQL:`;
 
   const sqlRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -264,7 +264,7 @@ For "columns": list only the columns the SQL selects.
 For "rows": generate 3-4 realistic mock rows matching EXACTLY the selected columns. Use plausible values.`;
 
   const metaRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -306,7 +306,8 @@ export async function POST(req: NextRequest) {
       const geminiResult = await callGemini(query);
       // Post-generation validation: ensure SQL matches intent
       result = validateAndMaybeFallback(query, geminiResult);
-    } catch {
+    } catch (error) {
+      console.error("Gemini Error:", error);
       // Gemini failed → use classified mock
       result = pickMockResponse(query);
     }
